@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internal BI Portal</title>
+<style>
+  * { box-sizing: border-box; margin:0; padding:0; font-family:"Segoe UI", Arial, sans-serif; }
+
+  body, html { height: 100%; width: 100%; }
+
+  /* Hide login & portal initially but maintain layout */
+  .js-enabled #loginPage,
+  .js-enabled #portal {
+    visibility: hidden;
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Login Page Styles */
+  .login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    background: linear-gradient(135deg, #2563eb, #1f2937);
+    background-size: 400% 400%;
+    animation: gradientShift 10s ease infinite;
+  }
+
+  .login-card {
+    background: white;
+    padding: 50px 35px;
+    border-radius: 15px;
+    width: 360px;
+    max-width: 90%;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+  }
+
+  .login-logo { max-width: 100px; margin-bottom: 20px; }
+
+  .login-card h2 { font-size: 1.4rem; color: #1f2937; margin-bottom: 30px; }
+
+  .input-group { margin-bottom: 15px; }
+
+  .input-group input {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    transition: border 0.3s, box-shadow 0.3s;
+  }
+
+  .input-group input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 8px rgba(37,99,235,0.4);
+    outline: none;
+  }
+
+  button {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+
+  button:hover { background: #1e40af; }
+  button:active { transform: scale(0.98); }
+
+  .error { color: red; margin-top: 15px; font-size: 0.9rem; display: none; }
+
+  @keyframes fadeIn {
+    from{opacity:0; transform:translateY(-20px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+
+  @keyframes gradientShift {
+    0% { background-position:0% 50%; }
+    50% { background-position:100% 50%; }
+    100% { background-position:0% 50%; }
+  }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    top:0;
+    left:0;
+    height:100%;
+    width:45px;
+    background:#1f2937;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    z-index:1000;
+    transition: width 0.25s ease;
+  }
+
+  .sidebar:hover { width:220px; }
+
+  .sidebar h1, .sidebar a, .sidebar-footer, .welcome-msg, .logout-btn { 
+    opacity:0; transition:opacity 0.25s ease; white-space:nowrap; 
+  }
+  .sidebar:hover h1, .sidebar:hover a, .sidebar:hover .sidebar-footer, 
+  .sidebar:hover .welcome-msg, .sidebar:hover .logout-btn { 
+    opacity:1; transition-delay:0.05s; 
+  }
+
+  .sidebar h1 { margin:0 0 15px 12px; font-size:1rem; }
+  .sidebar a { color:white; text-decoration:none; padding:8px 12px; margin:4px 0; border-radius:6px; display:block; transition:background 0.2s; cursor:pointer; }
+  .sidebar a:hover { background:#374151; }
+  .sidebar a.active { background:#2563eb; }
+
+  .welcome-msg { margin:10px 12px; font-size:0.9rem; font-weight: 600; }
+
+  /* Logout button above footer */
+  .logout-btn {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    width: calc(90% - 18px);
+    padding: 10px 8px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.25s ease, background 0.3s;
+  }
+
+  .sidebar:hover .logout-btn { opacity:1; }
+  .logout-btn:hover { background: #b91c1c; }
+
+  .sidebar-footer {
+    margin-top: auto;
+    text-align: center;
+    padding: 10px;
+    position: relative;
+  }
+
+  .sidebar-footer img { max-width:100%; height:auto; border-radius:8px; }
+
+  /* Main Content */
+  .main {
+    position: relative;
+    height:100%;
+    width:100%;
+    padding:20px 0px 5px 35px;
+    display:flex;
+    flex-direction:column;
+    z-index:1;
+    box-sizing:border-box;
+    transition: filter 0.25s ease;
+  }
+
+  .main.blurred { filter: blur(2px); }
+
+  .report-container { display:none; width:100%; height:100%; flex-direction:column; box-sizing:border-box; }
+  .report-container.active { display:flex; animation: fadeIn 0.25s ease; }
+  iframe { width:100%; height:100%; border:none; border-radius:6px; flex:1; box-sizing:border-box; }
+
+</style>
+</head>
+<body class="js-enabled">
+
+<!-- LOGIN PAGE -->
+<div class="login-container" id="loginPage">
+  <div class="login-card">
+    <img src="NAVTOR-logo-colour.png" alt="Logo" class="login-logo">
+    <h2>Welcome to Performance BI Portal</h2>
+    <form onsubmit="login(); return false;">
+      <div class="input-group">
+        <input type="text" id="username" placeholder="Username" required>
+      </div>
+      <div class="input-group">
+        <input type="password" id="password" placeholder="Password" required>
+      </div>
+      <button type="submit">Login</button>
+    </form>
+    <div class="error" id="error">Invalid username or password</div>
+  </div>
+</div>
+
+<!-- PORTAL -->
+<div class="portal" id="portal">
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h1>Performance BI Portal</h1>
+    <div class="welcome-msg" id="welcomeMsg"></div>
+    <a class="sidebar-link active" data-target="report1">Data Quality Checks</a>
+    <a class="sidebar-link" data-target="report2">Client Details</a>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+    <div class="sidebar-footer">
+      <img src="NAVTOR-logo-colour.png" alt="Company Logo">
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div id="report1" class="report-container active">
+      <iframe title="NavFleet Performance Data Checks"
+        src="https://app.powerbi.com/reportEmbed?reportId=c14b51cb-343d-4939-ac76-0af5e937a155&autoAuth=true&ctid=19491d82-bac7-419a-861b-7ed4a031972d&filterPaneEnabled=false"
+        allowFullScreen="true"></iframe>
+    </div>
+    <div id="report2" class="report-container">
+      <iframe title="Client Details"
+        src="https://app.powerbi.com/reportEmbed?reportId=847c8c46-02d4-4836-9fd6-fa74e632a1b1&autoAuth=true&ctid=19491d82-bac7-419a-861b-7ed4a031972d&filterPaneEnabled=false"
+        allowFullScreen="true"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+  // User credentials
+  const users = {
+    "pratik@navtor": "Pratik#",
+    "nilam@navtor": "Nilam#",
+    "prithiviraj@navtor": "Prithiviraj#"
+  };
+
+  // Show portal for logged-in user
+  function showPortal(username) {
+    const portal = document.getElementById('portal');
+    const login = document.getElementById('loginPage');
+
+    login.style.display = 'none';
+    login.style.visibility = 'hidden';
+
+    portal.style.display = 'flex';
+    portal.style.visibility = 'visible';
+
+    const name = username.split('@')[0];
+    document.getElementById('welcomeMsg').textContent = 
+      `Welcome, ${name.charAt(0).toUpperCase() + name.slice(1)}!`;
+  }
+
+  // Show login page
+  function showLogin() {
+    const portal = document.getElementById('portal');
+    const login = document.getElementById('loginPage');
+
+    portal.style.display = 'none';
+    portal.style.visibility = 'hidden';
+
+    login.style.display = 'flex';
+    login.style.visibility = 'visible';
+  }
+
+  // Login
+  function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorDiv = document.getElementById('error');
+
+    if(users[username] && users[username] === password) {
+      localStorage.setItem('loggedInUser', username);
+      showPortal(username);
+    } else {
+      errorDiv.style.display = "block";
+    }
+  }
+
+  // Logout
+  function logout() {
+    localStorage.removeItem('loggedInUser');
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('error').style.display = "none";
+    showLogin();
+  }
+
+  // Check login state immediately
+  const loggedInUser = localStorage.getItem('loggedInUser');
+  if(loggedInUser) {
+    showPortal(loggedInUser);
+  } else {
+    showLogin();
+  }
+
+  // Report switching
+  const links = document.querySelectorAll('.sidebar-link');
+  const reports = document.querySelectorAll('.report-container');
+  links.forEach(link => {
+    link.addEventListener('click', () => {
+      links.forEach(l => l.classList.remove('active'));
+      link.classList.add('active');
+      reports.forEach(r => r.classList.remove('active'));
+      document.getElementById(link.dataset.target).classList.add('active');
+    });
+  });
+
+  // Blur effect on sidebar hover
+  const sidebar = document.getElementById('sidebar');
+  const main = document.querySelector('.main');
+  sidebar.addEventListener('mouseenter', () => main.classList.add('blurred'));
+  sidebar.addEventListener('mouseleave', () => main.classList.remove('blurred'));
+
+  // Enter key login
+  document.getElementById('password').addEventListener('keyup', function(e) {
+    if(e.key === 'Enter') login();
+  });
+</script>
+
+</body>
+</html>
